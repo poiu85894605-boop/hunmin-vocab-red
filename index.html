@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>한글몽이 징검다리 끝말잇기 (빨강모드)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Jua, Noto Sans KR -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;600;800;900&display=swap" rel="stylesheet">
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            strawberry: {
+              50: '#FFF0F2',
+              100: '#FFE1E5',
+              200: '#FFC8CE',
+              400: '#FF6B6B',
+              500: '#FF4D4D',
+              600: '#E63939',
+              700: '#C02222',
+            },
+            cream: '#FFFDF9',
+            gold: '#FF9F1C',
+          },
+          fontFamily: {
+            jua: ['Jua', 'sans-serif'],
+            sans: ['Noto Sans KR', 'sans-serif'],
+          },
+          keyframes: {
+            bounceSlow: {
+              '0%, 100%': { transform: 'translateY(-4%)' },
+              '50%': { transform: 'translateY(0)' },
+            },
+            wobble: {
+              '0%, 100%': { transform: 'translateX(0)' },
+              '15%': { transform: 'translateX(-8px) rotate(-3deg)' },
+              '30%': { transform: 'translateX(8px) rotate(3deg)' },
+              '45%': { transform: 'translateX(-5px) rotate(-1deg)' },
+              '60%': { transform: 'translateX(5px) rotate(1deg)' },
+            },
+            floatBubble: {
+              '0%, 100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-6px)' },
+            }
+          },
+          animation: {
+            'bounce-slow': 'bounceSlow 2.5s infinite ease-in-out',
+            'wobble': 'wobble 0.5s ease-in-out',
+            'float': 'floatBubble 3s infinite ease-in-out',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: linear-gradient(135deg, #FFF0F2 0%, #FFEBEF 50%, #FFFDF9 100%);
+      min-height: 100vh;
+      user-select: none;
+    }
+    .font-jua {
+      font-family: 'Jua', sans-serif;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #FFE1E5;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #FF6B6B;
+      border-radius: 10px;
+    }
+    .stone-shadow {
+      box-shadow: 0 8px 0 #C02222, 0 12px 15px rgba(0,0,0,0.15);
+    }
+    .stone-shadow-active {
+      box-shadow: 0 4px 0 #C02222, 0 6px 10px rgba(0,0,0,0.15);
+      transform: translateY(4px);
+    }
+  </style>
+</head>
+<body class="text-gray-800 flex flex-col min-h-screen">
+
+  <!-- ================= TOP NAVIGATION BAR ================= -->
+  <header class="bg-white/90 backdrop-blur-md border-b-4 border-strawberry-400 sticky top-0 z-30 shadow-md">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <!-- Title & Mascot Logo -->
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="resetGameToStart()">
+        <div class="w-10 h-10 bg-strawberry-500 rounded-full flex items-center justify-center text-white text-2xl shadow-inner animate-bounce-slow">
+          🍓
+        </div>
+        <div>
+          <h1 class="font-jua text-xl md:text-2xl text-strawberry-600 tracking-wide flex items-center gap-2">
+            한글몽이 징검다리 끝말잇기 
+            <span class="bg-strawberry-500 text-white text-xs px-2 py-0.5 rounded-full font-sans font-bold shadow-sm">빨강모드</span>
+          </h1>
+          <p class="text-xs text-gray-500 hidden sm:block">느린 학습자를 위한 UDL 끝말잇기 모험 (10단계 / 1000m)</p>
+        </div>
+      </div>
+
+      <!-- Level & Controls -->
+      <div class="flex items-center space-x-2 sm:space-x-3 text-sm">
+        <!-- Level Badge -->
+        <div class="bg-strawberry-50 border-2 border-strawberry-400 px-3 py-1.5 rounded-2xl flex items-center space-x-1.5 shadow-sm">
+          <span class="text-lg">🏆</span>
+          <span id="navLevelText" class="font-jua text-strawberry-600 text-base">1단계 / 10단계</span>
+        </div>
+
+        <!-- Mute Sound Toggle -->
+        <button id="soundToggleBtn" onclick="toggleSound()" class="p-2 bg-gray-100 hover:bg-strawberry-100 text-gray-700 rounded-xl transition border border-gray-300 flex items-center title="소리 켜기/끄기">
+          <span id="soundIcon">🔊</span>
+        </button>
+
+        <!-- CSV Modal Button -->
+        <button onclick="openCsvModal()" class="px-3 py-1.5 bg-white hover:bg-strawberry-50 border border-strawberry-300 text-strawberry-700 font-semibold rounded-xl transition shadow-sm text-xs sm:text-sm flex items-center gap-1">
+          <span>📄</span> <span class="hidden md:inline">단어</span> 교체
+        </button>
+
+        <!-- GAS Sync Modal Button -->
+        <button onclick="openGasModal()" class="px-3 py-1.5 bg-gradient-to-r from-strawberry-500 to-strawberry-600 hover:from-strawberry-600 hover:to-strawberry-700 text-white font-bold rounded-xl shadow transition text-xs sm:text-sm flex items-center gap-1">
+          <span>📊</span> 선생님 제출
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= MAIN CONTENT WRAPPER ================= -->
+  <main class="flex-1 max-w-6xl w-full mx-auto p-3 sm:p-5 flex flex-col lg:flex-row gap-5">
+
+    <!-- LEFT COLUMN: Character & Stepping Stones Stream Trail -->
+    <section class="lg:w-5/12 flex flex-col gap-4">
+      
+      <!-- Height Progress Bar -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm border-2 border-strawberry-200">
+        <div class="flex justify-between items-center mb-2">
+          <span class="font-jua text-strawberry-700 text-lg flex items-center gap-1">
+            <span>⛰️</span> 현재 등반 높이
+          </span>
+          <span id="heightMeterText" class="font-jua text-strawberry-600 text-xl">10m / 1000m</span>
+        </div>
+        <div class="w-full bg-strawberry-100 rounded-full h-5 p-0.5 border border-strawberry-300 relative overflow-hidden">
+          <div id="heightBarFill" class="bg-gradient-to-r from-strawberry-400 to-gold h-full rounded-full transition-all duration-500 shadow" style="width: 1%;"></div>
+        </div>
+        <div class="flex justify-between text-xs text-gray-400 mt-1 font-bold">
+          <span>0m (출발)</span>
+          <span>500m</span>
+          <span>1000m (정상)</span>
+        </div>
+      </div>
+
+      <!-- Mascot '말랑말랑 한글몽이' Avatar & Speech Bubble -->
+      <div class="bg-gradient-to-br from-strawberry-500 to-strawberry-600 rounded-3xl p-5 shadow-lg text-white relative overflow-hidden flex flex-col items-center">
+        <!-- Floating decorative strawberries -->
+        <div class="absolute top-2 left-3 text-white/20 text-3xl select-none">🍓</div>
+        <div class="absolute bottom-2 right-3 text-white/20 text-4xl select-none">🍓</div>
+
+        <!-- Speech Bubble -->
+        <div class="w-full bg-white text-gray-800 p-3.5 rounded-2xl shadow-md mb-4 relative animate-float border-2 border-strawberry-200">
+          <p id="mascotBubble" class="font-jua text-base sm:text-lg text-strawberry-700 text-center leading-snug">
+            안녕! 나는 한글몽이야 🍓 징검다리를 사뿐하게 건너서 1000m 정상까지 가보자몽!
+          </p>
+
+          <!-- Speech bubble tip pointing down -->
+          <div class="absolute -bottom-2.5 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[10px] border-t-white"></div>
+        </div>
+
+        <!-- SVG Mascot Illustration -->
+        <div class="relative w-32 h-32 cursor-pointer transition hover:scale-105" onclick="speakMascotGreeting()">
+          <!-- Strawberry Mascot SVG -->
+          <svg viewBox="0 0 200 200" class="w-full h-full drop-shadow-md">
+            <!-- Strawberry Body -->
+            <path d="M 100,20 C 160,20 180,80 160,140 C 140,190 100,200 100,200 C 100,200 60,190 40,140 C 20,80 40,20 100,20 Z" fill="#FF4D4D" stroke="#C02222" stroke-width="6"/>
+            <!-- Seeds -->
+            <ellipse cx="70" cy="70" rx="4" ry="7" fill="#FFD166" transform="rotate(-10 70 70)"/>
+            <ellipse cx="130" cy="70" rx="4" ry="7" fill="#FFD166" transform="rotate(10 130 70)"/>
+            <ellipse cx="100" cy="95" rx="4" ry="7" fill="#FFD166"/>
+            <ellipse cx="65" cy="120" rx="4" ry="7" fill="#FFD166" transform="rotate(-15 65 120)"/>
+            <ellipse cx="135" cy="120" rx="4" ry="7" fill="#FFD166" transform="rotate(15 135 120)"/>
+            <ellipse cx="100" cy="150" rx="4" ry="7" fill="#FFD166"/>
+            <!-- Leaves (Cap) -->
+            <path d="M 100,25 C 80,5 50,15 60,35 C 75,30 90,32 100,38 C 110,32 125,30 140,35 C 150,15 120,5 100,25 Z" fill="#06D6A0" stroke="#048A67" stroke-width="4"/>
+            <path d="M 100,25 C 95,5 105,5 100,0" fill="none" stroke="#048A67" stroke-width="5" stroke-linecap="round"/>
+            <!-- Eyes -->
+            <circle cx="75" cy="100" r="9" fill="#1E293B"/>
+            <circle cx="125" cy="100" r="9" fill="#1E293B"/>
+            <circle cx="78" cy="97" r="3" fill="#FFFFFF"/>
+            <circle cx="128" cy="97" r="3" fill="#FFFFFF"/>
+            <!-- Cute Blush -->
+            <ellipse cx="62" cy="112" rx="8" ry="5" fill="#FF85A1" opacity="0.8"/>
+            <ellipse cx="138" cy="112" rx="8" ry="5" fill="#FF85A1" opacity="0.8"/>
+            <!-- Mouth -->
+            <path d="M 90,112 Q 100,126 110,112" fill="none" stroke="#1E293B" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <p class="text-xs font-bold text-strawberry-100 mt-1">말랑말랑 한글몽이 (터치해서 인삿말 듣기)</p>
+      </div>
+
+      <!-- Stepping Stones Trail Visualizer -->
+      <div class="bg-white rounded-3xl p-4 shadow-sm border-2 border-strawberry-200 flex flex-col flex-1">
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="font-jua text-gray-700 text-base flex items-center gap-1">
+            <span>🌊</span> 이번 단계 징검다리 코스 (1~10번)
+          </h2>
+          <span id="stoneProgressBadge" class="text-xs bg-strawberry-100 text-strawberry-700 px-2.5 py-1 rounded-full font-bold">
+            1 / 10 번째 돌
+          </span>
+        </div>
+
+        <!-- River Stream Graphic Container -->
+        <div class="relative bg-sky-100/80 rounded-2xl p-4 border-2 border-sky-200 overflow-hidden min-h-[220px] flex flex-col justify-between">
+          <!-- River Waves background -->
+          <div class="absolute inset-0 opacity-20 bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:12px_12px] pointer-events-none"></div>
+
+          <!-- Stepping Stones Grid (10 Stones) -->
+          <div id="stonesGrid" class="grid grid-cols-5 gap-2 sm:gap-3 my-auto z-10">
+            <!-- Dynamically generated 10 stones -->
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT COLUMN: Interactive Word Chain Card & UDL Control -->
+    <section class="lg:w-7/12 flex flex-col gap-4">
+
+      <!-- Current Word Card -->
+      <div id="mainGameCard" class="bg-white rounded-3xl p-5 sm:p-7 shadow-lg border-4 border-strawberry-300 flex flex-col justify-between relative overflow-hidden transition-transform">
+        
+        <!-- Header Info in Card -->
+        <div class="flex justify-between items-center border-b pb-3 border-gray-100">
+          <span class="bg-strawberry-500 text-white font-jua text-sm px-3 py-1 rounded-full shadow-sm flex items-center gap-1">
+            <span>🎯</span> <span id="currentLevelBadge">1단계 - 1번 징검다리</span>
+          </span>
+          <button onclick="readCurrentWordTTS()" class="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold px-3 py-1 rounded-xl text-xs sm:text-sm transition flex items-center gap-1 shadow-sm border border-amber-300">
+            <span>🔊</span> 문제 읽어주기
+          </button>
+        </div>
+
+        <!-- Current Word Big Display -->
+        <div class="my-4 text-center">
+          <p class="text-xs sm:text-sm text-gray-400 font-bold mb-1">제시된 단어</p>
+          <div class="inline-block bg-gradient-to-r from-strawberry-50 to-amber-50 px-6 py-3 rounded-2xl border-2 border-strawberry-200 shadow-inner">
+            <h2 id="currentWordDisplay" class="font-jua text-4xl sm:text-6xl text-strawberry-600 tracking-wider">
+              가을
+            </h2>
+          </div>
+          
+          <!-- Next Starting Syllable Prompt Rule -->
+          <div class="mt-3 inline-flex items-center gap-2 bg-strawberry-500 text-white font-jua text-lg sm:text-xl px-5 py-2 rounded-2xl shadow-md animate-pulse">
+            <span>👉</span> 다음 단어는 '<span id="targetSyllableText" class="text-gold font-extrabold underline underline-offset-4">을</span>'(으)로 시작해요!
+          </div>
+        </div>
+
+        <!-- UDL Dictionary Definition Box -->
+        <div class="bg-cream rounded-2xl p-4 border-2 border-amber-200 mb-4 shadow-sm relative">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-md flex items-center gap-1">
+              <span>📖</span> 뜻풀이 힌트
+            </span>
+            <button onclick="readDefinitionTTS()" class="text-amber-700 hover:text-amber-900 text-xs font-bold underline">
+              🔊 뜻 듣기
+            </button>
+          </div>
+          <p id="wordDefinitionText" class="text-sm sm:text-base text-gray-700 leading-relaxed font-medium">
+            여름과 겨울 사이의 계절로, 곡식과 과일이 익고 단풍이 드는 시기예요.
+          </p>
+        </div>
+
+        <!-- Scaffolding Tools (Initial Consonant Hint & Choice Chips) -->
+        <div class="space-y-3 mb-4">
+          <!-- Initial Consonant Hint Toggle -->
+          <div class="flex flex-wrap items-center justify-between gap-2 bg-strawberry-50 p-3 rounded-2xl border border-strawberry-200">
+            <div class="flex items-center space-x-2">
+              <span class="text-lg">💡</span>
+              <span class="text-xs sm:text-sm font-bold text-strawberry-800">초성 힌트:</span>
+              <span id="initialHintDisplay" class="font-jua text-lg text-strawberry-600 tracking-widest bg-white px-3 py-0.5 rounded-lg border border-strawberry-300">
+                ㅇㅅㄷ
+              </span>
+            </div>
+            <button id="hintToggleBtn" onclick="toggleHintCount()" class="text-xs bg-strawberry-500 hover:bg-strawberry-600 text-white font-bold px-3 py-1.5 rounded-xl transition shadow-sm">
+              힌트 보기 사용
+            </button>
+          </div>
+
+          <!-- UDL Choice Helper Chips (Clickable Answer Candidates for Slow Learners) -->
+          <div id="udlCandidateContainer" class="hidden bg-amber-50/90 p-3 rounded-2xl border-2 border-dashed border-amber-300">
+            <p class="text-xs font-bold text-amber-800 mb-2 flex items-center gap-1">
+              <span>🧩</span> 도움 카드 (맞는 단어를 직접 터치해도 돼요!):
+            </p>
+            <div id="udlChipsBox" class="flex flex-wrap gap-2 justify-center">
+              <!-- Dynamically populated candidate chips -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Answer Input Box & Submit Button -->
+        <div class="space-y-3">
+          <form onsubmit="handleAnswerSubmit(event)" class="flex gap-2">
+            <input 
+              type="text" 
+              id="answerInput" 
+              placeholder="단어를 입력하세요 (예: 을숙도)" 
+              autocomplete="off"
+              class="flex-1 bg-white border-3 border-strawberry-300 focus:border-strawberry-500 focus:ring-4 focus:ring-strawberry-200 text-gray-800 font-jua text-xl sm:text-2xl px-4 py-3 rounded-2xl outline-none transition placeholder:text-gray-300 shadow-inner"
+            />
+            <button 
+              type="submit" 
+              class="bg-gradient-to-r from-strawberry-500 to-strawberry-600 hover:from-strawberry-600 hover:to-strawberry-700 text-white font-jua text-lg sm:text-xl px-5 sm:px-7 py-3 rounded-2xl shadow-md hover:shadow-lg transition flex items-center gap-1 active:scale-95 shrink-0"
+            >
+              <span>밟기</span>
+              <span class="text-xl">➔</span>
+            </button>
+          </form>
+
+          <!-- UDL Toggle Choice Helper Button -->
+          <div class="text-center">
+            <button type="button" onclick="toggleUdlCandidates()" class="text-xs text-strawberry-600 font-bold underline hover:text-strawberry-800">
+              🙋 단어 입력이 어려우신가요? (도움 카드 보기)
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Bottom Stats & Status Footer -->
+      <div class="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm flex flex-wrap justify-around items-center text-xs sm:text-sm font-bold text-gray-600 gap-2">
+        <div class="flex items-center space-x-1">
+          <span class="text-base">🎯</span>
+          <span>맞힌 단어: <span id="statScoreText" class="text-strawberry-600 font-jua text-base">0</span>개</span>
+        </div>
+        <div class="h-4 w-px bg-gray-300"></div>
+        <div class="flex items-center space-x-1">
+          <span class="text-base">💡</span>
+          <span>사용한 힌트: <span id="statHintText" class="text-amber-600 font-jua text-base">0</span>회</span>
+        </div>
+        <div class="h-4 w-px bg-gray-300"></div>
+        <div class="flex items-center space-x-1">
+          <span class="text-base">⏱️</span>
+          <span>소요 시간: <span id="statTimerText" class="text-blue-600 font-jua text-base">00:00</span></span>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ================= MODAL: GOOGLE APPS SCRIPT SYNC ================= -->
+  <div id="gasModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border-4 border-strawberry-400 relative animate-bounce-slow" style="animation-duration: 0.3s; animation-iteration-count: 1;">
+      <button onclick="closeGasModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl font-bold">✕</button>
+      
+      <div class="flex items-center space-x-2 text-strawberry-600 mb-4">
+        <span class="text-3xl">📊</span>
+        <h3 class="font-jua text-2xl">선생님 구글 스프레드시트 연동</h3>
+      </div>
+
+      <p class="text-xs text-gray-500 mb-4 leading-relaxed">
+        구글 앱스 스크립트(GAS) 웹 앱 URL을 등록해두면, 학생의 학습 결과가 구글 시트에 자동으로 저장됩니다.
+      </p>
+
+      <form onsubmit="saveAndSendGasData(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">학생 이름 *</label>
+          <input type="text" id="gasStudentName" required placeholder="예: 김민수" class="w-full border border-gray-300 p-2.5 rounded-xl text-sm focus:border-strawberry-500 focus:outline-none" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">학년 / 반 *</label>
+          <input type="text" id="gasStudentClass" required placeholder="예: 3학년 1반" class="w-full border border-gray-300 p-2.5 rounded-xl text-sm focus:border-strawberry-500 focus:outline-none" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">구글 앱스 스크립트(GAS) Web App URL</label>
+          <input type="url" id="gasUrlInput" placeholder="https://script.google.com/macros/s/.../exec" class="w-full border border-gray-300 p-2.5 rounded-xl text-sm focus:border-strawberry-500 focus:outline-none font-mono text-xs" />
+          <p class="text-[11px] text-amber-600 mt-1">💡 최초 1회 입력 시 자동 저장됩니다.</p>
+        </div>
+
+        <!-- Preview payload summary -->
+        <div class="bg-strawberry-50 p-3 rounded-xl border border-strawberry-200 text-xs text-strawberry-900 space-y-1">
+          <p class="font-bold">현재 제출 예정 기록:</p>
+          <p>• 달성 단계: <span id="modalStatLevel" class="font-bold">1단계</span></p>
+          <p>• 맞힌 단어: <span id="modalStatScore" class="font-bold">0개</span></p>
+          <p>• 사용 힌트: <span id="modalStatHint" class="font-bold">0회</span></p>
+          <p>• 소요 시간: <span id="modalStatTime" class="font-bold">00:00</span></p>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeGasModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 rounded-xl text-sm transition">
+            취소
+          </button>
+          <button type="submit" class="flex-1 bg-strawberry-500 hover:bg-strawberry-600 text-white font-bold py-2.5 rounded-xl text-sm shadow transition">
+            기록 제출하기
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: CSV / CUSTOM WORD SET ================= -->
+  <div id="csvModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border-4 border-strawberry-400 relative">
+      <button onclick="closeCsvModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl font-bold">✕</button>
+      
+      <div class="flex items-center space-x-2 text-strawberry-600 mb-3">
+        <span class="text-3xl">📄</span>
+        <h3 class="font-jua text-2xl">커스텀 단어 세트 교체</h3>
+      </div>
+
+      <p class="text-xs text-gray-500 mb-3">
+        선생님만의 끝말잇기 단어 데이터로 변경할 수 있습니다. (형식: 단어, 뜻풀이)
+      </p>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">CSV 파일 업로드</label>
+          <input type="file" id="csvFileInput" accept=".csv, .txt" onchange="handleCsvFileUpload(event)" class="block w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-strawberry-50 file:text-strawberry-700 hover:file:bg-strawberry-100 cursor-pointer" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">기본 제공 세트로 복원</label>
+          <button onclick="resetToDefaultVocabulary()" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition border">
+            🔄 표준 100단어 기본 세트로 되돌리기
+          </button>
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-4">
+        <button onclick="closeCsvModal()" class="bg-strawberry-500 text-white font-bold px-5 py-2 rounded-xl text-sm">
+          닫기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: GAME COMPLETE CELEBRATION ================= -->
+  <div id="victoryModal" class="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-md w-full p-7 shadow-2xl border-4 border-gold text-center relative overflow-hidden animate-bounce-slow" style="animation-duration: 0.5s; animation-iteration-count: 1;">
+      <div class="text-6xl mb-2">🏆</div>
+      <h2 class="font-jua text-3xl text-strawberry-600 mb-1">1000m 정복 완등 성공!</h2>
+      <p class="text-sm text-gray-600 font-bold mb-4">모든 징검다리를 무사히 건넜습니다! 대단해요몽! 🍓</p>
+
+      <div class="bg-strawberry-50 rounded-2xl p-4 border border-strawberry-200 text-left text-sm space-y-2 mb-5">
+        <div class="flex justify-between">
+          <span class="text-gray-500 font-bold">최종 달성 높이:</span>
+          <span class="font-jua text-strawberry-600 text-base">1000m (10단계 완료)</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-gray-500 font-bold">맞힌 단어 총수:</span>
+          <span id="victoryScore" class="font-jua text-strawberry-600 text-base">100개</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-gray-500 font-bold">힌트 사용 횟수:</span>
+          <span id="victoryHints" class="font-jua text-amber-600 text-base">0회</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-gray-500 font-bold">총 소요 시간:</span>
+          <span id="victoryTime" class="font-jua text-blue-600 text-base">00:00</span>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <button onclick="closeVictoryModalAndSubmit()" class="w-full bg-gradient-to-r from-strawberry-500 to-strawberry-600 hover:from-strawberry-600 hover:to-strawberry-700 text-white font-jua text-xl py-3 rounded-2xl shadow-lg transition">
+          📊 선생님께 기록 제출하기
+        </button>
+        <button onclick="resetGameToStart(); closeVictoryModal();" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 rounded-2xl text-sm transition">
+          🔄 처음부터 다시 도전하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ================= JAVASCRIPT LOGIC ================= -->
+  <script>
+    /* ===================================================================
+     * 1. 100-WORD CHAIN DATASET (10 LEVELS x 10 WORDS)
+     * =================================================================== */
+    const DEFAULT_VOCABULARY = [
+      // ----- LEVEL 1 (10m ~ 100m) -----
+      [
+        { word: "가을", def: "여름과 겨울 사이의 계절로, 곡식과 과일이 익는 시기예요." },
+        { word: "을숙도", def: "낙동강 입구에 있는 넓고 아름다운 새들의 섬이에요." },
+        { word: "도시락", def: "맛있는 음식을 담아서 들고 다닐 수 있는 통이에요." },
+        { word: "낙엽", def: "가을에 나무에서 떨어지는 알록달록한 나뭇잎이에요." },
+        { word: "연필", def: "글씨를 쓰거나 그림을 그릴 때 쓰는 학용품이에요." },
+        { word: "필통", def: "연필과 지우개를 깔끔하게 넣고 다니는 상자예요." },
+        { word: "통발", def: "물고기를 잡을 때 사용하는 그물 도구예요." },
+        { word: "발자국", def: "흙이나 눈 위에 발로 걸어간 흔적이에요." },
+        { word: "국기", def: "우리나라를 대표하는 상징 깃발(태극기)이에요." },
+        { word: "기차", def: "철길 위를 칙칙폭폭 달리는 큰 차예요." }
+      ],
+      // ----- LEVEL 2 (110m ~ 200m) -----
+      [
+        { word: "차표", def: "버스나 기차를 타기 위해 돈을 주고 사는 표예요." },
+        { word: "표범", def: "몸에 아름다운 점박이 무늬가 있는 용맹한 동물이에요." },
+        { word: "범고래", def: "검은색과 흰색이 섞인 바다의 멋진 대형 고래예요." },
+        { word: "래프팅", def: "고무보트를 타고 시원한 계곡을 내려가는 스포츠예요." },
+        { word: "팅커벨", def: "동화 속 피터팬과 함께 다니는 작고 귀여운 요정이에요." },
+        { word: "벨기에", def: "유럽에 있는 달콤한 초콜릿으로 유명한 나라예요." },
+        { word: "이발소", def: "머리카락을 단정하게 자르고 다듬어 주는 곳이에요." },
+        { word: "소풍", def: "경치 좋은 곳으로 친구들과 놀러 가는 신나는 날이에요." },
+        { word: "풍선", def: "공기를 불어 넣으면 동그랗게 부풀어 오르는 장난감이에요." },
+        { word: "선물", def: "남에게 정성스럽고 고마운 마음으로 주는 물건이에요." }
+      ],
+      // ----- LEVEL 3 (210m ~ 300m) -----
+      [
+        { word: "물고기", def: "물속에서 아가미로 숨을 쉬며 헤엄치는 동물이에요." },
+        { word: "기상청", def: "오늘과 내일의 날씨를 조사해서 알려주는 나라 기관이에요." },
+        { word: "청소기", def: "바닥의 먼지를 슉슉 빨아들이는 편리한 가전제품이에요." },
+        { word: "기린", def: "목과 다리가 아주 길어서 높은 나뭇잎을 먹는 동물이에요." },
+        { word: "인형", def: "사람이나 동물 모양으로 귀엽게 만든 장난감이에요." },
+        { word: "형광등", def: "방 안을 환하게 밝혀 주는 길쭉한 전등이에요." },
+        { word: "등산", def: "Healthy하게 산을 차근차근 걸어서 올라가는 운동이에요." },
+        { word: "산토끼", def: "산과 들에서 깡충깡충 뛰어다니는 귀여운 토끼예요." },
+        { word: "끼리끼리", def: "서로 비슷하거나 마음이 맞는 사람들끼리 모이는 모습이에요." },
+        { word: "리본", def: "선물 포장이나 머리에 예쁘게 매는 장식 끈이에요." }
+      ],
+      // ----- LEVEL 4 (310m ~ 400m) -----
+      [
+        { word: "본보기", def: "다른 사람이 보고 배울 만한 훌륭한 칭찬 모델이에요." },
+        { word: "비행기", def: "하늘을 쌩쌩 날아서 멀리 갈 수 있는 큰 탈것이에요." },
+        { word: "기와집", def: "지붕에 검은 기와를 예쁘게 얹은 옛날 우리 전통 집이에요." },
+        { word: "집비둘기", def: "동네 공원이나 길가에서 흔히 볼 수 있는 새예요." },
+        { word: "기상", def: "아침에 잠에서 깨어 씩씩하게 일어나는 행동이에요." },
+        { word: "상어", def: "바다 속을 헤엄치는 날카로운 이빨을 가진 멋진 물고기예요." },
+        { word: "어부", def: "바다나 강에서 배를 타고 물고기를 잡는 고마운 분이에요." },
+        { word: "부채", def: "손으로 살살 흔들어 시원한 바람을 일으키는 도구예요." },
+        { word: "채송화", def: "화단에 예쁘게 피는 작고 귀여운 알록달록 꽃이에요." },
+        { word: "화분", def: "흙을 담고 식물이나 꽃을 심어 키우는 그릇이에요." }
+      ],
+      // ----- LEVEL 5 (410m ~ 500m) -----
+      [
+        { word: "분홍색", def: "장미꽃처럼 포근하고 예쁜 분홍빛 색깔이에요." },
+        { word: "색연필", def: "여러 가지 고운 색깔이 나오는 그림 그리기 연필이에요." },
+        { word: "필기구", def: "글씨를 쓰거나 공부할 때 사용하는 도구 전체예요." },
+        { word: "구름", def: "하늘에 뭉게뭉게 떠 있는 하얗고 부드러운 수증기예요." },
+        { word: "음향", def: "소리의 울림이나 음악의 멋진 소리 느낌이에요." },
+        { word: "향기", def: "꽃이나 과일에서 풍겨 나오는 기분 좋은 냄새예요." },
+        { word: "기온", def: "공기가 얼마나 따뜻하거나 차가운지 나타내는 온점이에요." },
+        { word: "온도계", def: "따뜻함과 차가움을 숫자로 재어 주는 기구예요." },
+        { word: "계란", def: "암탉이 낳은 동글동글 영양 만점 영양 알이에요." },
+        { word: "난초", def: "은은하고 고운 향기를 가진 길쭉한 풀잎 식물이에요." }
+      ],
+      // ----- LEVEL 6 (510m ~ 600m) -----
+      [
+        { word: "초콜릿", def: "달콤하고 쌉싸름해서 기분이 좋아지는 디저트 과자예요." },
+        { word: "리듬", def: "음악에 맞추어 신나게 손뼉 칠 수 있는 박자 흐름이에요." },
+        { word: "금메달", def: "경기에서 1등을 한 자랑스러운 선수에게 주는 반짝이는 메달이에요." },
+        { word: "달팽이", def: "느릿느릿 자기 집을 등에 지고 다니는 작은 동물이에요." },
+        { word: "이발사", def: "멋진 스타일로 머리를 다듬어 주시는 이발소 선생님이에요." },
+        { word: "사과", def: "빨갛게 익어서 아삭아삭 맛있는 대표 과일이에요." },
+        { word: "과자", def: "바삭바삭 소리가 나며 달콤한 맛있는 간식이에요." },
+        { word: "자전거", def: "두 바퀴에 페달을 밟아서 움직이는 친환경 탈것이에요." },
+        { word: "거울", def: "내 얼굴과 모습을 똑같이 비추어 보는 유리 도구예요." },
+        { word: "울타리", def: "마당이나 집 둘레를 살포시 둘러싸는 담장이에요." }
+      ],
+      // ----- LEVEL 7 (610m ~ 700m) -----
+      [
+        { word: "리코더", def: "입으로 바람을 불어 고운 소리를 내는 피리 모양 악기예요." },
+        { word: "더위", def: "여름철에 땀이 솔솔 나게 만드는 뜨거운 기운이에요." },
+        { word: "위성", def: "지구 같은 행성 둘레를 빙글빙글 돌고 있는 천체예요." },
+        { word: "성탄절", def: "크리스마스라고 불리는 즐겁고 기쁜 축제 날이에요." },
+        { word: "절약", def: "물과 돈, 물건을 함부로 쓰지 않고 아껴 쓰는 고운 습관이에요." },
+        { word: "약속", def: "친구와 서로 앞으로 꼭 하겠다고 정하는 다짐이에요." },
+        { word: "속담", def: "옛날부터 전해 내려오는 지혜가 담긴 짧은 말이에요." },
+        { word: "담요", def: "추울 때 몸을 포근하고 따뜻하게 덮어주는 홑이불이에요." },
+        { word: "요리사", def: "맛있고 영양가 있는 음식을 전문적으로 만드는 요리 선생님이에요." },
+        { word: "사자", def: "백수의 왕이라 불리는 늠름하고 멋진 맹수예요." }
+      ],
+      // ----- LEVEL 8 (710m ~ 800m) -----
+      [
+        { word: "자연", def: "사람이 만들지 않은 아름다운 산, 강, 하늘, 들판이에요." },
+        { word: "연구소", def: "새로운 과학 지식이나 멋진 기술을 탐구하는 장소예요." },
+        { word: "소방관", def: "불이 나면 제일 먼저 달려와 구해주시는 고마운 영웅이에요." },
+        { word: "관찰", def: "식물이나 곤충의 모습을 요리조리 자세히 살펴보는 일이에요." },
+        { word: "찰흙", def: "손으로 조물조물 만져서 만들기를 하는 점토 흙이에요." },
+        { word: "흙먼지", def: "바람이 불 때 공기 중에 사르르 날리는 흙 입자예요." },
+        { word: "지구", def: "우리가 다 함께 살고 있는 우주의 푸른 행성이에요." },
+        { word: "구급차", def: "아픈 사람을 병원으로 빠르게 태워 주는 고마운 차예요." },
+        { word: "차나무", def: "따뜻하고 좋은 차를 만드는 싱그러운 찻잎 나무예요." },
+        { word: "무지개", def: "비 온 뒤 하늘에 일곱 빛깔로 예쁘게 뜨는 다리 모양이에요." }
+      ],
+      // ----- LEVEL 9 (810m ~ 900m) -----
+      [
+        { word: "개구리", def: "개골개골 울며 개울가와 땅을 오가는 귀여운 양서류예요." },
+        { word: "리본", def: "선물 상자를 예쁘게 묶어주는 비단 끈 장식이에요." },
+        { word: "본능", def: "태어날 때부터 가지고 있는 자연스러운 마음의 힘이에요." },
+        { word: "능력", def: "어떤 어려운 일도 척척 해낼 수 있는 멋진 힘이에요." },
+        { word: "역사", def: "우리 조상님들이 살아온 지난날의 이야기와 기록이에요." },
+        { word: "사진기", def: "소중한 순간의 추억을 찰칵 찍어 남기는 카메라예요." },
+        { word: "기차역", def: "기차가 멈추어 서서 사람들이 타고 내리는 장소예요." },
+        { word: "역도", def: "무거운 바벨을 번쩍 들어 올려 힘을 겨루는 스포츠예요." },
+        { word: "도토리", def: "다람쥐가 제일 좋아하는 동글동글 숲속 열매예요." },
+        { word: "리어카", def: "짐을 싣고 사람이 앞에서 끌고 가는 두 바퀴 수레예요." }
+      ],
+      // ----- LEVEL 10 (910m ~ 1000m FINAL STAGE) -----
+      [
+        { word: "카네이션", def: "어버이날 부모님 가슴에 달아드리는 감사와 사랑의 붉은 꽃이에요." },
+        { word: "신발", def: "발을 깨끗하고 안전하게 보호하기 위해 신는 물건이에요." },
+        { word: "발레리나", def: "아름답고 가볍게 무대 위에서 춤을 추는 발레 무용수예요." },
+        { word: "나비", def: "꽃 사이를 너울너울 날아다니는 알록달록 고운 곤충이에요." },
+        { word: "비누", def: "손을 손살같이 깨끗이 씻을 때 거품을 내는 보송보송 도구예요." },
+        { word: "누에고치", def: "비단실을 자아내는 누에 애벌레의 실 집이에요." },
+        { word: "치약", def: "양치질할 때 칫솔에 묻혀 치아를 하얗게 닦는 약이에요." },
+        { word: "약수터", def: "산에서 시원하고 깨끗한 물이 졸졸 나오는 샘터예요." },
+        { word: "터미널", def: "시외버스나 버스가 출발하고 모이는 큰 정류장이에요." },
+        { word: "날개", def: "새나 곤충이 하늘을 훨훨 날 수 있게 해주는 몸의 부분이에요." }
+      ]
+    ];
+
+    /* ===================================================================
+     * 2. KOREAN INITIAL CONSONANT & DU-EUM RULE HELPERS
+     * =================================================================== */
+    const CHOSUNG_LIST = ["ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
+
+    function getInitialConsonants(word) {
+      let result = "";
+      for (let i = 0; i < word.length; i++) {
+        const code = word.charCodeAt(i) - 44032;
+        if (code >= 0 && code <= 11172) {
+          result += CHOSUNG_LIST[Math.floor(code / 588)];
+        } else {
+          result += word[i];
+        }
+      }
+      return result;
+    }
+
+    // 두음법칙 (Korean Initial Sound Law Mapping)
+    function getValidStartSyllables(syllable) {
+      if (!syllable) return [];
+      const valid = [syllable];
+      const dueumMap = {
+        '라': ['나'], '락': ['낙', '악'], '란': ['난', '안'], '람': ['남', '암'],
+        '랍': ['납', '압'], '랑': ['낭', '앙'], '래': ['내'], '랭': ['냉'],
+        '량': ['양'], '력': ['역'], '련': ['연'], '렬': ['열'], '렴': ['염'],
+        '렵': ['엽'], '령': ['영'], '례': ['예'], '로': ['노'], '록': ['녹', '옥'],
+        '론': ['논'], '롱': ['농'], '뢰': ['뇌'], '료': ['요'], '루': ['누'],
+        '류': ['유'], '륙': ['육'], '륜': ['윤'], '률': ['율'], '륭': ['융'],
+        '륵': ['느'], '름': ['음'], '릉': ['능'], '리': ['이'], '림': ['임'],
+        '립': ['입'], '녀': ['여'], '뇨': ['요'], '뉴': ['유'], '니': ['이'],
+        '닢': ['잎'], '릿': ['잇', '릿']
+      };
+      if (dueumMap[syllable]) {
+        valid.push(...dueumMap[syllable]);
+      }
+      return [...new Set(valid)];
+    }
+
+    /* ===================================================================
+     * 3. SOUND SYNTHESIZER (WEB AUDIO API - NO EXTERNAL ASSETS NEEDED)
+     * =================================================================== */
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.isMuted = false;
+      }
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+      }
+      playSuccess() {
+        if (this.isMuted) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        notes.forEach((freq, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + i * 0.08);
+          gain.gain.setValueAtTime(0.2, now + i * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.25);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + i * 0.08);
+          osc.stop(now + i * 0.08 + 0.25);
+        });
+      }
+      playWrong() {
+        if (this.isMuted) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.exponentialRampToValueAtTime(130, now + 0.3);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      }
+      playLevelUp() {
+        if (this.isMuted) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98];
+        notes.forEach((freq, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + i * 0.09);
+          gain.gain.setValueAtTime(0.25, now + i * 0.09);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.09 + 0.3);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + i * 0.09);
+          osc.stop(now + i * 0.09 + 0.3);
+        });
+      }
+      playClick() {
+        if (this.isMuted) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(700, now);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.05);
+      }
+    }
+
+    const sound = new SoundEngine();
+
+    function toggleSound() {
+      sound.isMuted = !sound.isMuted;
+      document.getElementById('soundIcon').innerText = sound.isMuted ? '🔇' : '🔊';
+      showMascotSpeech(sound.isMuted ? "소리를 껐다몽!" : "소리를 켰다몽! 🔊");
+    }
+
+    /* ===================================================================
+     * 4. STATE MANAGEMENT & GLOBALS
+     * =================================================================== */
+    let currentVocabulary = JSON.parse(JSON.stringify(DEFAULT_VOCABULARY));
+    let levelIndex = 0; // 0 ~ 9 (Level 1 ~ 10)
+    let wordIndex = 0;  // 0 ~ 9 (Stone 1 ~ 10 in level)
+    
+    let totalScore = 0;
+    let hintCount = 0;
+    let timerSeconds = 0;
+    let timerInterval = null;
+
+    // Distractor words generator for UDL Choice Helper Chips
+    const DISTRACTOR_POOL = [
+      "바다", "하늘", "나무", "구름", "호랑이", "토끼", "강아지", "고양이",
+      "피아노", "태권도", "도서관", "운동장", "선생님", "우주선", "로봇", "비행기"
+    ];
+
+    /* ===================================================================
+     * 5. INITIALIZATION & GAME LOOP
+     * =================================================================== */
+    window.onload = function() {
+      loadSavedGasUrl();
+      initGame();
+      startTimer();
+    };
+
+    function initGame() {
+      levelIndex = 0;
+      wordIndex = 0;
+      totalScore = 0;
+      hintCount = 0;
+      timerSeconds = 0;
+      
+      updateUI();
+      showMascotSpeech("안녕! 나는 한글몽이야 🍓 징검다리를 건너 1000m 정상까지 가보자몽!");
+    }
+
+    function resetGameToStart() {
+      if (confirm("처음 1단계 1번 징검다리부터 다시 시작할까요?")) {
+        sound.playClick();
+        initGame();
+      }
+    }
+
+    function startTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        timerSeconds++;
+        const mins = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
+        const secs = (timerSeconds % 60).toString().padStart(2, '0');
+        document.getElementById('statTimerText').innerText = `${mins}:${secs}`;
+      }, 1000);
+    }
+
+    /* ===================================================================
+     * 6. UI RENDERER
+     * =================================================================== */
+    function updateUI() {
+      const currentLevelData = currentVocabulary[levelIndex] || currentVocabulary[0];
+      const targetWordObj = currentLevelData[wordIndex] || currentLevelData[0];
+      const currentWordStr = targetWordObj.word;
+
+      // 1. Navigation & Meter Progress
+      const heightInMeters = (levelIndex * 100) + ((wordIndex + 1) * 10);
+      document.getElementById('navLevelText').innerText = `${levelIndex + 1}단계 / 10단계`;
+      document.getElementById('heightMeterText').innerText = `${heightInMeters}m / 1000m`;
+      
+      const fillPercentage = Math.min(100, (heightInMeters / 1000) * 100);
+      document.getElementById('heightBarFill').style.width = `${fillPercentage}%`;
+
+      // 2. Stepping Stones Grid (1~10)
+      renderSteppingStones();
+
+      // 3. Current Word Card
+      document.getElementById('currentLevelBadge').innerText = `${levelIndex + 1}단계 - ${wordIndex + 1}번 징검다리`;
+      document.getElementById('currentWordDisplay').innerText = currentWordStr;
+      
+      const lastChar = currentWordStr.charAt(currentWordStr.length - 1);
+      const validStarts = getValidStartSyllables(lastChar);
+      document.getElementById('targetSyllableText').innerText = validStarts.join('/');
+
+      // 4. Definition & Hints
+      document.getElementById('wordDefinitionText').innerText = targetWordObj.def;
+      
+      // Calculate next answer word for hint extraction
+      let nextAnswerObj = null;
+      if (wordIndex < currentLevelData.length - 1) {
+        nextAnswerObj = currentLevelData[wordIndex + 1];
+      } else if (levelIndex < currentVocabulary.length - 1) {
+        nextAnswerObj = currentVocabulary[levelIndex + 1][0];
+      }
+
+      if (nextAnswerObj) {
+        const chosung = getInitialConsonants(nextAnswerObj.word);
+        document.getElementById('initialHintDisplay').innerText = chosung;
+      } else {
+        document.getElementById('initialHintDisplay').innerText = "최종 관문!";
+      }
+
+      // Hide UDL chips by default when moving to next word
+      document.getElementById('udlCandidateContainer').classList.add('hidden');
+
+      // 5. Input Field Reset
+      const answerInput = document.getElementById('answerInput');
+      answerInput.value = '';
+      answerInput.focus();
+
+      // 6. Stats Footer
+      document.getElementById('statScoreText').innerText = totalScore;
+      document.getElementById('statHintText').innerText = hintCount;
+    }
+
+    function renderSteppingStones() {
+      const container = document.getElementById('stonesGrid');
+      container.innerHTML = '';
+
+      document.getElementById('stoneProgressBadge').innerText = `${wordIndex + 1} / 10 번째 돌`;
+
+      for (let i = 0; i < 10; i++) {
+        const stone = document.createElement('div');
+        stone.className = "flex flex-col items-center justify-center p-2 rounded-2xl font-jua text-sm sm:text-base transition-all duration-300 relative border-2 cursor-default select-none ";
+
+        if (i < wordIndex) {
+          // Cleared Stone
+          stone.className += "bg-emerald-400 text-white border-emerald-600 shadow";
+          stone.innerHTML = `<span>${i + 1}번</span><span class="text-xs">✓ 건넜음</span>`;
+        } else if (i === wordIndex) {
+          // Current Target Stone
+          stone.className += "bg-gradient-to-b from-strawberry-400 to-strawberry-600 text-white border-strawberry-700 stone-shadow scale-105 animate-bounce-slow";
+          stone.innerHTML = `<span>${i + 1}번</span><span class="text-xs text-gold">★ 여기!</span>`;
+        } else {
+          // Future Stone
+          stone.className += "bg-white/80 text-gray-400 border-gray-200 shadow-sm";
+          stone.innerHTML = `<span>${i + 1}번</span><span class="text-[10px] text-gray-300">징검다리</span>`;
+        }
+
+        container.appendChild(stone);
+      }
+    }
+
+    /* ===================================================================
+     * 7. ANSWER SUBMISSION & VERIFICATION LOGIC
+     * =================================================================== */
+    function handleAnswerSubmit(e) {
+      if (e) e.preventDefault();
+
+      const inputElem = document.getElementById('answerInput');
+      const userText = inputElem.value.trim();
+
+      if (!userText) {
+        showMascotSpeech("단어를 입력하거나 아래 도움 카드를 골라줘몽!");
+        sound.playWrong();
+        return;
+      }
+
+      const currentLevelData = currentVocabulary[levelIndex];
+      const currentWordObj = currentLevelData[wordIndex];
+      const lastChar = currentWordObj.word.charAt(currentWordObj.word.length - 1);
+      const validStarts = getValidStartSyllables(lastChar);
+
+      // Determine expected target word
+      let expectedTarget = null;
+      if (wordIndex < currentLevelData.length - 1) {
+        expectedTarget = currentLevelData[wordIndex + 1].word;
+      } else if (levelIndex < currentVocabulary.length - 1) {
+        expectedTarget = currentVocabulary[levelIndex + 1][0].word;
+      }
+
+      // Check validation rules:
+      // 1) Starts with valid syllable (두음법칙 적용)
+      const userStartChar = userText.charAt(0);
+      const isStartValid = validStarts.includes(userStartChar);
+
+      // 2) Exact match or valid word chaining
+      const isExactMatch = expectedTarget && (userText === expectedTarget);
+
+      if (isStartValid && (isExactMatch || userText.length >= 2)) {
+        // CORRECT ANSWER!
+        sound.playSuccess();
+        totalScore++;
+        
+        // Visual Bounce Feedback
+        triggerCardBounceAnimation();
+
+        // Check if level or game completed
+        if (wordIndex < 9) {
+          wordIndex++;
+          showMascotSpeech(`사뿐사뿐 정답이다몽! '${userText}'(으)로 징검다리를 밟았어! ✨`);
+        } else {
+          // LEVEL CLEAR!
+          if (levelIndex < 9) {
+            levelIndex++;
+            wordIndex = 0;
+            sound.playLevelUp();
+            triggerConfettiSmall();
+            showMascotSpeech(`🎉 우와! ${levelIndex}단계를 완벽히 클리어했어몽! 더 높은 곳으로 가자!`);
+          } else {
+            // VICTORY! 1000m REACHED!
+            triggerGameVictory();
+            return;
+          }
+        }
+
+        updateUI();
+
+      } else {
+        // INCORRECT ANSWER
+        sound.playWrong();
+        triggerCardWobbleAnimation();
+        showMascotSpeech(`'${validStarts.join('/')}'(으)로 시작하는 단어를 찾아봐몽! 힌트도 눌러봐!`);
+      }
+    }
+
+    function triggerCardBounceAnimation() {
+      const card = document.getElementById('mainGameCard');
+      card.classList.add('scale-105');
+      setTimeout(() => card.classList.remove('scale-105'), 200);
+    }
+
+    function triggerCardWobbleAnimation() {
+      const card = document.getElementById('mainGameCard');
+      card.classList.add('animate-wobble');
+      setTimeout(() => card.classList.remove('animate-wobble'), 500);
+    }
+
+    /* ===================================================================
+     * 8. UDL HELPER & CANDIDATE CHIPS
+     * =================================================================== */
+    function toggleHintCount() {
+      hintCount++;
+      sound.playClick();
+      document.getElementById('statHintText').innerText = hintCount;
+      showMascotSpeech("초성 힌트와 힌트 카드를 참고해서 정답을 맞춰봐몽! 💡");
+      toggleUdlCandidates();
+    }
+
+    function toggleUdlCandidates() {
+      const container = document.getElementById('udlCandidateContainer');
+      const isHidden = container.classList.contains('hidden');
+
+      if (isHidden) {
+        container.classList.remove('hidden');
+        generateUdlChips();
+      } else {
+        container.classList.add('hidden');
+      }
+    }
+
+    function generateUdlChips() {
+      const currentLevelData = currentVocabulary[levelIndex];
+      let correctWord = "";
+
+      if (wordIndex < currentLevelData.length - 1) {
+        correctWord = currentLevelData[wordIndex + 1].word;
+      } else if (levelIndex < currentVocabulary.length - 1) {
+        correctWord = currentVocabulary[levelIndex + 1][0].word;
+      } else {
+        correctWord = "날개";
+      }
+
+      // Pick 2 distractors
+      const distractors = DISTRACTOR_POOL.filter(w => w !== correctWord).sort(() => 0.5 - Math.random()).slice(0, 2);
+      const options = [correctWord, ...distractors].sort(() => 0.5 - Math.random());
+
+      const chipsBox = document.getElementById('udlChipsBox');
+      chipsBox.innerHTML = '';
+
+      options.forEach(word => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = "bg-white hover:bg-strawberry-50 text-strawberry-700 font-jua text-base sm:text-lg px-4 py-2 rounded-xl border-2 border-amber-300 shadow-sm transition transform hover:scale-105 active:scale-95";
+        btn.innerText = word;
+        btn.onclick = () => {
+          document.getElementById('answerInput').value = word;
+          sound.playClick();
+          handleAnswerSubmit(null);
+        };
+        chipsBox.appendChild(btn);
+      });
+    }
+
+    /* ===================================================================
+     * 9. TTS (TEXT-TO-SPEECH) VOICE AUDIO
+     * =================================================================== */
+    function speakText(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel(); // Stop ongoing speech
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'ko-KR';
+        utterance.rate = 0.85; // Slightly slower for slow learners
+        utterance.pitch = 1.1; // Friendly tone
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    function readCurrentWordTTS() {
+      sound.playClick();
+      const currentLevelData = currentVocabulary[levelIndex];
+      const wordObj = currentLevelData[wordIndex];
+      const lastChar = wordObj.word.charAt(wordObj.word.length - 1);
+      const validStarts = getValidStartSyllables(lastChar);
+      
+      speakText(`제시 단어 ${wordObj.word}. 다음 단어는 ${validStarts.join(' 또는 ')} 로 시작합니다.`);
+    }
+
+    function readDefinitionTTS() {
+      sound.playClick();
+      const currentLevelData = currentVocabulary[levelIndex];
+      const wordObj = currentLevelData[wordIndex];
+      speakText(`뜻풀이. ${wordObj.def}`);
+    }
+
+    function speakMascotGreeting() {
+      sound.playClick();
+      speakText("안녕! 나는 한글몽이야! 사뿐사뿐 징검다리를 건너서 1000m 정상까지 올라가자!");
+    }
+
+    function showMascotSpeech(msg) {
+      document.getElementById('mascotBubble').innerText = msg;
+    }
+
+    /* ===================================================================
+     * 10. VICTORY & CONFETTI
+     * =================================================================== */
+    function triggerGameVictory() {
+      if (timerInterval) clearInterval(timerInterval);
+      sound.playLevelUp();
+      triggerConfettiFull();
+
+      document.getElementById('victoryScore').innerText = `${totalScore}개`;
+      document.getElementById('victoryHints').innerText = `${hintCount}회`;
+      
+      const mins = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
+      const secs = (timerSeconds % 60).toString().padStart(2, '0');
+      document.getElementById('victoryTime').innerText = `${mins}:${secs}`;
+
+      document.getElementById('victoryModal').classList.remove('hidden');
+    }
+
+    function closeVictoryModal() {
+      document.getElementById('victoryModal').classList.add('hidden');
+    }
+
+    function closeVictoryModalAndSubmit() {
+      closeVictoryModal();
+      openGasModal();
+    }
+
+    function triggerConfettiSmall() {
+      if (typeof confetti === 'function') {
+        confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 } });
+      }
+    }
+
+    function triggerConfettiFull() {
+      if (typeof confetti === 'function') {
+        confetti({ particleCount: 150, spread: 100, origin: { y: 0.5 } });
+      }
+    }
+
+    /* ===================================================================
+     * 11. GOOGLE APPS SCRIPT (GAS) INTEGRATION
+     * =================================================================== */
+    function loadSavedGasUrl() {
+      const savedUrl = localStorage.getItem('hangulmong_gas_url');
+      if (savedUrl) {
+        document.getElementById('gasUrlInput').value = savedUrl;
+      }
+      const savedName = localStorage.getItem('hangulmong_student_name');
+      if (savedName) {
+        document.getElementById('gasStudentName').value = savedName;
+      }
+      const savedClass = localStorage.getItem('hangulmong_student_class');
+      if (savedClass) {
+        document.getElementById('gasStudentClass').value = savedClass;
+      }
+    }
+
+    function openGasModal() {
+      sound.playClick();
+      document.getElementById('modalStatLevel').innerText = `${levelIndex + 1}단계 (${(levelIndex * 100) + ((wordIndex + 1) * 10)}m)`;
+      document.getElementById('modalStatScore').innerText = `${totalScore}개`;
+      document.getElementById('modalStatHint').innerText = `${hintCount}회`;
+      
+      const mins = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
+      const secs = (timerSeconds % 60).toString().padStart(2, '0');
+      document.getElementById('modalStatTime').innerText = `${mins}:${secs}`;
+
+      document.getElementById('gasModal').classList.remove('hidden');
+    }
+
+    function closeGasModal() {
+      document.getElementById('gasModal').classList.add('hidden');
+    }
+
+    async function saveAndSendGasData(e) {
+      e.preventDefault();
+
+      const studentName = document.getElementById('gasStudentName').value.trim();
+      const studentClass = document.getElementById('gasStudentClass').value.trim();
+      const gasUrl = document.getElementById('gasUrlInput').value.trim();
+
+      if (!gasUrl) {
+        alert("선생님의 구글 앱스 스크립트(GAS) Web App URL을 입력해 주세요!");
+        return;
+      }
+
+      // Save credentials for convenience
+      localStorage.setItem('hangulmong_gas_url', gasUrl);
+      localStorage.setItem('hangulmong_student_name', studentName);
+      localStorage.setItem('hangulmong_student_class', studentClass);
+
+      const mins = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
+      const secs = (timerSeconds % 60).toString().padStart(2, '0');
+
+      const payload = {
+        studentName: studentName,
+        studentClass: studentClass,
+        completedLevel: levelIndex + 1,
+        score: totalScore,
+        hintCount: hintCount,
+        playTime: `${mins}분 ${secs}초`,
+        memo: `빨강모드 등반 높이 ${(levelIndex * 100) + ((wordIndex + 1) * 10)}m`
+      };
+
+      try {
+        showMascotSpeech("선생님 구글 시트로 결과를 보내는 중이다몽... 🚀");
+        
+        // POST to GAS Web App with text/plain header to bypass CORS issues
+        await fetch(gasUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        sound.playSuccess();
+        alert("🎉 선생님 구글 스프레드시트에 학습 결과가 성공적으로 전송되었습니다!");
+        showMascotSpeech("제출 완료! 자랑스러워몽! 🍓");
+        closeGasModal();
+
+      } catch (err) {
+        console.error(err);
+        alert("전송 중 오류가 발생했습니다. URL 및 인터넷 연결 상태를 확인해 주세요.");
+        showMascotSpeech("제출 도중 오류가 생겼다몽!");
+      }
+    }
+
+    /* ===================================================================
+     * 12. CSV CUSTOM VOCABULARY MANAGEMENT
+     * =================================================================== */
+    function openCsvModal() {
+      sound.playClick();
+      document.getElementById('csvModal').classList.remove('hidden');
+    }
+
+    function closeCsvModal() {
+      document.getElementById('csvModal').classList.add('hidden');
+    }
+
+    function handleCsvFileUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const text = evt.target.result;
+        parseAndApplyCsv(text);
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    function parseAndApplyCsv(csvText) {
+      try {
+        const lines = csvText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        const parsedWords = [];
+
+        lines.forEach(line => {
+          const parts = line.split(',');
+          if (parts.length >= 2) {
+            parsedWords.push({
+              word: parts[0].trim(),
+              def: parts[1].trim()
+            });
+          }
+        });
+
+        if (parsedWords.length < 10) {
+          alert("최소 10개 이상의 단어가 포함된 CSV 파일이어야 합니다.");
+          return;
+        }
+
+        // Re-structure into 10 levels
+        const newVocab = [];
+        let chunkSize = Math.max(1, Math.floor(parsedWords.length / 10));
+        
+        for (let i = 0; i < 10; i++) {
+          const levelSlice = parsedWords.slice(i * chunkSize, (i + 1) * chunkSize);
+          if (levelSlice.length > 0) {
+            newVocab.push(levelSlice);
+          }
+        }
+
+        while (newVocab.length < 10) {
+          newVocab.push(newVocab[newVocab.length - 1]);
+        }
+
+        currentVocabulary = newVocab;
+        initGame();
+        closeCsvModal();
+        alert("🎉 커스텀 단어 세트가 성공적으로 적용되었습니다!");
+
+      } catch (err) {
+        alert("CSV 파일을 읽는 중 에러가 발생했습니다.");
+      }
+    }
+
+    function resetToDefaultVocabulary() {
+      currentVocabulary = JSON.parse(JSON.stringify(DEFAULT_VOCABULARY));
+      initGame();
+      closeCsvModal();
+      alert("표준 100단어 기본 세트로 되돌렸습니다.");
+    }
+  </script>
+</body>
+</html>
